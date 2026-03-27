@@ -2,15 +2,8 @@
   <h1 align="center">🤖 OpenClaw Termux (No Root)</h1>
   <p align="center">
     <strong>Control any Android phone via Telegram using Gemini AI — no root required.</strong><br>
-    <sub>Powered by OpenClaw + Shizuku + Termux</sub>
   </p>
-  <p align="center">
-    <a href="#-quick-start">Quick Start</a> •
-    <a href="#-features">Features</a> •
-    <a href="#-commands">Commands</a> •
-    <a href="#-how-it-works">How It Works</a> •
-    <a href="#-credits">Credits</a>
-  </p>
+ 
 </p>
 
 ---
@@ -27,12 +20,12 @@ It runs entirely on-device using **Termux** + **Shizuku** for privileged shell a
 
 ## 🚀 Features
 
-- 💬 **Telegram Bot** — Send commands from anywhere in the world
-- 🧠 **Gemini AI** — Understands natural language, not just keywords
-- 📱 **30+ Device Commands** — WiFi, Bluetooth, calls, SMS, screenshots, volume, brightness & more
-- 🤖 **Visual Agent** — AI-driven screen navigation for complex tasks (uses screenshots + UI parsing)
-- 🔒 **No Root Required** — Uses Shizuku for ADB-level access without rooting
-- ⚡ **1-Click Install** — Single script sets up everything
+-  **Telegram Bot** — Send commands from anywhere in the world
+-  **Gemini AI** — Understands natural language, not just keywords
+-  **30+ Device Commands** — WiFi, Bluetooth, calls, SMS, screenshots, volume, brightness & more
+-  **Visual Agent** — AI-driven screen navigation for complex tasks (uses screenshots + UI parsing)
+-  **No Root Required** — Uses Shizuku for ADB-level access without rooting
+-  **1-Click Install** — Single script sets up everything
 
 ---
 
@@ -139,53 +132,7 @@ Now open **Telegram**, find your bot, and try:
 | `whatsapp-send <number> <msg>` | Send a WhatsApp message |
 | `info` | Show device model & Android version |
 
-### 🤖 Visual Agent (Complex Tasks)
 
-For tasks that require navigating menus or interacting with app UIs:
-
-```bash
-bash ~/phone_agent.sh "Open Settings and enable Dark Mode"
-bash ~/phone_agent.sh "Read my notifications"
-bash ~/phone_agent.sh "Open WhatsApp and send a message to Mom"
-```
-
-The visual agent takes screenshots, reads UI elements with their coordinates, and uses Gemini to decide what to tap/type/swipe — fully autonomous, up to 15 steps.
-
----
-
-## ⚙️ How It Works
-
-```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌─────────────┐
-│  Telegram    │────▶│   OpenClaw   │────▶│  Gemini AI   │────▶│  Shizuku    │
-│  (You)       │◀────│  (Gateway)   │◀────│  (Brain)     │◀────│  (rish)     │
-└─────────────┘     └──────────────┘     └──────────────┘     └─────────────┘
-                                                                     │
-                                                                     ▼
-                                                              ┌─────────────┐
-                                                              │  Android    │
-                                                              │  Phone      │
-                                                              └─────────────┘
-```
-
-1. You send a message on **Telegram**
-2. **OpenClaw** receives it and forwards to **Gemini AI**
-3. Gemini understands the request and generates a shell command
-4. The command runs via **Shizuku (rish)** — giving ADB-level access without root
-5. Result is sent back to you on Telegram
-
----
-
-## 📁 Project Structure
-
-```
-openclaw-termux-noroot/
-├── auto_setup.sh    # 1-click universal installer (sets up everything)
-├── LICENSE
-└── README.md
-```
-
----
 
 ## 🔧 Troubleshooting
 
