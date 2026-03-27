@@ -1,5 +1,5 @@
 <p align="center">
-  <h1 align="center">🤖 OpenClaw Termux No Root</h1>
+  <h1 align="center">🤖 OpenClaw Termux (No Root)</h1>
   <p align="center">
     <strong>Control any Android phone via Telegram using Gemini AI — no root required.</strong><br>
     <sub>Powered by OpenClaw + Shizuku + Termux</sub>
@@ -15,7 +15,7 @@
 
 ---
 
-## ✨ What is OpenClaw Termux No Root?
+## ✨ What is OpenClaw Termux?
 
 **OpenClaw Termux NoRoot** turns your Android phone into an AI-powered remote control. Send natural language commands through **Telegram** — like *"check my battery"*, *"open YouTube"*, or *"turn off WiFi"* — and your phone executes them instantly.
 
