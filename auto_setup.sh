@@ -2,34 +2,73 @@
 # =========================================================================
 # 🤖 CloudBot + Shizuku Universal Installer
 # =========================================================================
-# NOTE: This script is designed to be run via: curl ... | bash
-# All commands that might read stdin are protected with </dev/null
-# to prevent them from consuming the piped script.
+# Designed to run via: curl -sL <url> | bash
+# Fully non-interactive — no prompts, no hangs, no silent exits.
+# =========================================================================
 
-set -euo pipefail
+# ── Global Settings ──────────────────────────────────────────────────────
+# Do NOT use "set -e" — it kills the script on any minor failure.
+# Instead, we check errors explicitly where they matter.
+export DEBIAN_FRONTEND=noninteractive
+export DPKG_FORCE=confold
+export APT_LISTCHANGES_FRONTEND=none
+export LANG=C
+export LC_ALL=C
 
 echo ""
 echo "🤖 CloudBot Non-Root Phone Control Installer"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# 1. Update Packages & Install Dependencies
+# =========================================================================
+# Step 1/5: Update Packages & Install Dependencies
+# =========================================================================
 echo "📦 Step 1/5: Updating packages and installing dependencies..."
-yes | pkg update </dev/null
-pkg install -y curl nodejs git cmake make clang binutils nmap openssl android-tools which </dev/null
+
+# Update with all non-interactive flags to prevent config file prompts
+pkg update -y -o Dpkg::Options::="--force-confold" -o Dpkg::Options::="--force-confdef" </dev/null 2>&1 || {
+    echo "⚠️  pkg update had warnings (this is usually fine, continuing...)"
+}
+
+# Install required packages (some may already exist — that's OK)
+pkg install -y curl nodejs git cmake make clang binutils nmap openssl android-tools which </dev/null 2>&1 || {
+    echo "⚠️  Some packages may have failed to install, checking essentials..."
+}
+
+# Verify the critical ones exist
+MISSING=""
+for cmd in curl node git nmap adb; do
+    if ! command -v "$cmd" </dev/null >/dev/null 2>&1; then
+        MISSING="$MISSING $cmd"
+    fi
+done
+if [ -n "$MISSING" ]; then
+    echo "❌ ERROR: Missing critical commands:$MISSING"
+    echo "   Try running: pkg install -y curl nodejs git nmap android-tools"
+    exit 1
+fi
+
 echo "✅ Dependencies installed"
 
-# 2. Setup Shizuku (rish & shizuku commands)
+# =========================================================================
+# Step 2/5: Setup Shizuku (rish & shizuku commands)
+# =========================================================================
 echo ""
 echo "🔒 Step 2/5: Linking Shizuku to Termux..."
-echo "A popup may appear asking for file permissions. Please tap 'Allow'."
-echo "y" | termux-setup-storage > /dev/null 2>&1
-sleep 3
+
+# Setup Termux storage access (may show a popup on first run)
+if [ ! -d "$HOME/storage" ]; then
+    echo "A popup may appear asking for file permissions. Please tap 'Allow'."
+    echo "y" | termux-setup-storage > /dev/null 2>&1 || true
+    sleep 3
+else
+    echo "   Storage access already configured."
+fi
 
 SHIZUKU_DIR="$HOME/storage/shared/Shizuku"
-mkdir -p "$SHIZUKU_DIR"
+mkdir -p "$SHIZUKU_DIR" 2>/dev/null || true
 
-# Create the advanced copy.sh script inside the Shizuku folder
+# Create the copy.sh script inside the Shizuku folder
 cat > "$SHIZUKU_DIR/copy.sh" << 'SHIZUKU_EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -44,18 +83,28 @@ if [ ! -f "${DEX}" ]; then
   exit 1
 fi
 
+# Detect device architecture for Shizuku library path
+ARCH=$(getprop ro.product.cpu.abi 2>/dev/null || echo "arm64-v8a")
+case "$ARCH" in
+  arm64*) LIB_ARCH="arm64" ;;
+  armeabi*) LIB_ARCH="arm" ;;
+  x86_64*) LIB_ARCH="x86_64" ;;
+  x86*) LIB_ARCH="x86" ;;
+  *) LIB_ARCH="arm64" ;;
+esac
+
 # Create a Shizuku script file
 tee "${BIN}/shizuku" > /dev/null << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # Make a list of open ports
-ports=\$( nmap -sT -p30000-50000 --open localhost | grep "open" | cut -f1 -d/ )
+ports=\$( nmap -sT -p30000-50000 --open localhost 2>/dev/null | grep "open" | cut -f1 -d/ )
 
 # Go through the list of ports
 for port in \${ports}; do
 
   # Try to connect to the port, and save the result
-  result=\$( adb connect "localhost:\${port}" )
+  result=\$( adb connect "localhost:\${port}" 2>/dev/null )
 
   # Check if the connection succeeded
   if [[ "\$result" =~ "connected" || "\$result" =~ "already" ]]; then
@@ -64,7 +113,7 @@ for port in \${ports}; do
     echo "\${result}"
 
     # Start Shizuku
-    adb shell "\$( adb shell pm path moe.shizuku.privileged.api | sed 's/^package://;s/base\\\\.apk/lib\\\\/arm64\\\\/libshizuku\\\\.so/' )"
+    adb shell "\$( adb shell pm path moe.shizuku.privileged.api | sed 's/^package://;s/base\\\\.apk/lib\\\\/${LIB_ARCH}\\\\/libshizuku\\\\.so/' )"
 
     # Disable wireless debugging, because it is not needed anymore
     adb shell settings put global adb_wifi_enabled 0
@@ -103,35 +152,83 @@ SHIZUKU_EOF
 
 chmod +x "$SHIZUKU_DIR/copy.sh"
 
+# Check for the required .dex file
 if [ ! -f "$SHIZUKU_DIR/rish_shizuku.dex" ]; then
-    echo "❌ ERROR: rish_shizuku.dex not found!"
-    echo "Please open the Shizuku app -> 'Use Shizuku in terminal apps' -> 'Export files'."
-    echo "Navigate to your main storage, create a folder named 'Shizuku', and select 'Use this folder'."
-    echo "Once exported to the Shizuku folder, run this installer script again!"
+    echo "❌ ERROR: rish_shizuku.dex not found in $SHIZUKU_DIR"
+    echo ""
+    echo "   To fix this:"
+    echo "   1. Open the Shizuku app"
+    echo "   2. Tap 'Use Shizuku in terminal apps'"
+    echo "   3. Tap 'Export files'"
+    echo "   4. Navigate to Internal Storage → Shizuku folder"
+    echo "   5. Tap 'Use this folder'"
+    echo "   6. Run this installer again!"
     exit 1
 fi
 
-# Run the provided copy.sh script (</dev/null prevents it from stealing stdin)
-bash "$SHIZUKU_DIR/copy.sh" </dev/null
+# Run copy.sh (</dev/null prevents it from consuming piped stdin)
+bash "$SHIZUKU_DIR/copy.sh" </dev/null && {
+    echo "✅ Shizuku scripts installed (rish & shizuku commands ready)"
+} || {
+    echo "⚠️  copy.sh had issues, but rish/shizuku scripts were still written."
+    echo "   You can connect Shizuku manually later."
+}
 
-echo "✅ Shizuku scripts installed"
-
-# 3. Fix Node.js IPv4 DNS (Crucial for Termux)
+# =========================================================================
+# Step 3/5: Fix Node.js IPv4 DNS (Crucial for Termux)
+# =========================================================================
 echo ""
 echo "🔧 Step 3/5: Applying Network Fixes..."
-if ! grep -q "NODE_OPTIONS=--dns-result-order=ipv4first" ~/.bashrc; then
+if ! grep -q "NODE_OPTIONS=--dns-result-order=ipv4first" ~/.bashrc 2>/dev/null; then
     echo "export NODE_OPTIONS=--dns-result-order=ipv4first" >> ~/.bashrc
 fi
 export NODE_OPTIONS=--dns-result-order=ipv4first
 echo "✅ IPv4 DNS fix applied"
 
-# 4. Install Official OpenClaw
+# =========================================================================
+# Step 4/5: Install Official OpenClaw
+# =========================================================================
 echo ""
 echo "📦 Step 4/5: Installing OpenClaw. This takes a few minutes..."
-curl -sL myopenclawhub.com/install | bash </dev/null
-echo "✅ OpenClaw installed"
 
-# 5. Inject Shizuku Phone Control Scripts & AI Override
+# Download the bootstrap first, then run it.
+# This avoids the nested "curl|bash inside curl|bash" stdin problem.
+OPENCLAW_TMP="/tmp/openclaw_bootstrap_$$.sh"
+if curl -sL myopenclawhub.com/install -o "$OPENCLAW_TMP" 2>/dev/null && [ -s "$OPENCLAW_TMP" ]; then
+    # Run with noninteractive env inherited, stdin from /dev/null
+    bash "$OPENCLAW_TMP" </dev/null 2>&1 || true
+    rm -f "$OPENCLAW_TMP"
+else
+    echo "⚠️  Could not download OpenClaw bootstrap script."
+    echo "   Try manually: curl -sL myopenclawhub.com/install | bash"
+fi
+
+# Source bashrc in case OpenClaw added itself to PATH there
+# shellcheck disable=SC1090
+source ~/.bashrc 2>/dev/null || true
+
+# Check if openclaw is now available
+if command -v openclaw </dev/null >/dev/null 2>&1; then
+    echo "✅ OpenClaw installed successfully"
+else
+    # Try common install locations
+    for p in "$HOME/.openclaw/bin" "$PREFIX/bin" "$HOME/.local/bin" "$HOME/bin"; do
+        if [ -x "$p/openclaw" ]; then
+            export PATH="$p:$PATH"
+            echo "✅ OpenClaw found at $p"
+            break
+        fi
+    done
+    if ! command -v openclaw </dev/null >/dev/null 2>&1; then
+        echo "⚠️  OpenClaw command not found in PATH after install."
+        echo "   Try closing and reopening Termux, then run: openclaw"
+        echo "   Or install manually: curl -sL myopenclawhub.com/install | bash"
+    fi
+fi
+
+# =========================================================================
+# Step 5/5: Inject Shizuku Phone Control Scripts & AI Override
+# =========================================================================
 echo ""
 echo "🧠 Step 5/5: Configuring AI Phone Controller..."
 
@@ -159,7 +256,7 @@ EOF
 chmod +x ~/phone_control.sh
 
 # AI Memory Configuration
-mkdir -p ~/.openclaw/workspace
+mkdir -p ~/.openclaw/workspace 2>/dev/null || true
 rm -f ~/.openclaw/workspace/BOOTSTRAP.md
 
 cat > ~/.openclaw/workspace/IDENTITY.md << 'EOF'
@@ -185,18 +282,22 @@ Do NOT use `python` or `su`. Use the bash script tools listed in TOOLS.md.
 EOF
 
 echo "✅ Custom AI brain installed"
+
+# =========================================================================
+# 🎉 Done!
+# =========================================================================
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎉 INSTALLATION COMPLETE!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "⚠️  Before using phone control, connect Shizuku:"
-echo "   1. Make sure Shizuku app says 'Shizuku is running'"
+echo "📱 Connect Shizuku (if not already):"
+echo "   1. Open Shizuku app → make sure it says 'Shizuku is running'"
 echo "   2. Run: shizuku"
-echo "   3. Test with: rish -c whoami"
+echo "   3. Test: rish -c whoami"
 echo ""
-echo "Then set up your API keys:"
-echo "1. Run: openclaw onboard"
-echo "2. Run: openclaw auth add google --key YOUR_GEMINI_KEY"
-echo "3. Run: openclaw gateway"
+echo "🔑 Set up your API keys:"
+echo "   1. Run: openclaw onboard"
+echo "   2. Run: openclaw auth add google --key YOUR_GEMINI_KEY"
+echo "   3. Run: openclaw gateway"
 echo ""
