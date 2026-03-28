@@ -2,6 +2,11 @@
 # =========================================================================
 # 🤖 CloudBot + Shizuku Universal Installer
 # =========================================================================
+# NOTE: This script is designed to be run via: curl ... | bash
+# All commands that might read stdin are protected with </dev/null
+# to prevent them from consuming the piped script.
+
+set -euo pipefail
 
 echo ""
 echo "🤖 CloudBot Non-Root Phone Control Installer"
@@ -10,8 +15,8 @@ echo ""
 
 # 1. Update Packages & Install Dependencies
 echo "📦 Step 1/5: Updating packages and installing dependencies..."
-yes | pkg update
-pkg install -y curl nodejs git cmake make clang binutils nmap openssl android-tools which
+yes | pkg update </dev/null
+pkg install -y curl nodejs git cmake make clang binutils nmap openssl android-tools which </dev/null
 echo "✅ Dependencies installed"
 
 # 2. Setup Shizuku (rish & shizuku commands)
@@ -106,9 +111,10 @@ if [ ! -f "$SHIZUKU_DIR/rish_shizuku.dex" ]; then
     exit 1
 fi
 
-# Run the provided copy.sh script
-bash "$SHIZUKU_DIR/copy.sh"
+# Run the provided copy.sh script (</dev/null prevents it from stealing stdin)
+bash "$SHIZUKU_DIR/copy.sh" </dev/null
 
+echo "✅ Shizuku scripts installed"
 
 # 3. Fix Node.js IPv4 DNS (Crucial for Termux)
 echo ""
@@ -122,7 +128,7 @@ echo "✅ IPv4 DNS fix applied"
 # 4. Install Official OpenClaw
 echo ""
 echo "📦 Step 4/5: Installing OpenClaw. This takes a few minutes..."
-curl -sL myopenclawhub.com/install | bash
+curl -sL myopenclawhub.com/install | bash </dev/null
 echo "✅ OpenClaw installed"
 
 # 5. Inject Shizuku Phone Control Scripts & AI Override
@@ -183,7 +189,13 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🎉 INSTALLATION COMPLETE!"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Almost done! You must manually enter your API keys now:"
+echo ""
+echo "⚠️  Before using phone control, connect Shizuku:"
+echo "   1. Make sure Shizuku app says 'Shizuku is running'"
+echo "   2. Run: shizuku"
+echo "   3. Test with: rish -c whoami"
+echo ""
+echo "Then set up your API keys:"
 echo "1. Run: openclaw onboard"
 echo "2. Run: openclaw auth add google --key YOUR_GEMINI_KEY"
 echo "3. Run: openclaw gateway"
