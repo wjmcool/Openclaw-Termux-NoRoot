@@ -191,65 +191,7 @@ echo "✅ IPv4 DNS fix applied"
 echo ""
 echo "📦 Step 4/5: Installing OpenClaw. This takes a few minutes..."
 
-# Download the bootstrap first, then run it.
-# This avoids the nested "curl|bash inside curl|bash" stdin problem.
-OPENCLAW_TMP="/tmp/openclaw_bootstrap_$$.sh"
-OPENCLAW_DOWNLOADED=false
-
-# Try 1: Primary URL with HTTPS and IPv4
-echo "   Downloading OpenClaw installer..."
-if curl -4 -fSL "https://myopenclawhub.com/install" -o "$OPENCLAW_TMP" 2>&1 && [ -s "$OPENCLAW_TMP" ]; then
-    OPENCLAW_DOWNLOADED=true
-fi
-
-# Try 2: Direct GitHub URL as fallback
-if [ "$OPENCLAW_DOWNLOADED" = false ]; then
-    echo "   Primary URL failed, trying GitHub directly..."
-    if curl -4 -fSL "https://raw.githubusercontent.com/AidanPark/openclaw-android/main/bootstrap.sh" -o "$OPENCLAW_TMP" 2>&1 && [ -s "$OPENCLAW_TMP" ]; then
-        OPENCLAW_DOWNLOADED=true
-    fi
-fi
-
-# Try 3: Without IPv4 forcing (in case device only has IPv6)
-if [ "$OPENCLAW_DOWNLOADED" = false ]; then
-    echo "   Trying without IPv4 restriction..."
-    if curl -fSL "https://myopenclawhub.com/install" -o "$OPENCLAW_TMP" 2>&1 && [ -s "$OPENCLAW_TMP" ]; then
-        OPENCLAW_DOWNLOADED=true
-    fi
-fi
-
-if [ "$OPENCLAW_DOWNLOADED" = true ]; then
-    # Run with noninteractive env inherited, stdin from /dev/null
-    bash "$OPENCLAW_TMP" </dev/null 2>&1 || true
-    rm -f "$OPENCLAW_TMP"
-else
-    rm -f "$OPENCLAW_TMP"
-    echo "⚠️  Could not download OpenClaw bootstrap script."
-    echo "   Try manually after setup: curl -sL https://myopenclawhub.com/install | bash"
-fi
-
-# Source bashrc in case OpenClaw added itself to PATH there
-# shellcheck disable=SC1090
-source ~/.bashrc 2>/dev/null || true
-
-# Check if openclaw is now available
-if command -v openclaw </dev/null >/dev/null 2>&1; then
-    echo "✅ OpenClaw installed successfully"
-else
-    # Try common install locations
-    for p in "$HOME/.openclaw/bin" "$PREFIX/bin" "$HOME/.local/bin" "$HOME/bin"; do
-        if [ -x "$p/openclaw" ]; then
-            export PATH="$p:$PATH"
-            echo "✅ OpenClaw found at $p"
-            break
-        fi
-    done
-    if ! command -v openclaw </dev/null >/dev/null 2>&1; then
-        echo "⚠️  OpenClaw command not found in PATH after install."
-        echo "   Try closing and reopening Termux, then run: openclaw"
-        echo "   Or install manually: curl -sL myopenclawhub.com/install | bash"
-    fi
-fi
+curl -sL myopenclawhub.com/install | bash </dev/null && source ~/.bashrc 2>/dev/null
 
 # =========================================================================
 # Step 5/5: Inject Shizuku Phone Control Scripts & AI Override
