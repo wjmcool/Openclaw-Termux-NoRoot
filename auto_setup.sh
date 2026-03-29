@@ -289,9 +289,20 @@ EOF
 
 cat > ~/.openclaw/workspace/AGENTS.md << 'EOF'
 I execute terminal commands directly and parse their output.
-I MUST use `bash ~/phone_control.sh ui-dump` to see the screen and navigate autonomously.
-I will chain commands in a loop until the objective is fully completed.
+I am an autonomous agent. I must chain tool executions until the user's ultimate goal is fully achieved.
+
+CRITICAL: DO NOT STOP AFTER ONE TOOL CALL!
+Small models tend to open an app and immediately say "I opened the app, please do the rest yourself." YOU MUST NOT DO THIS. 
+You must loop your tool calls continuously:
+1. Call `exec` -> open app
+2. **WAIT FOR RESULT** (Do not type a message to the user!)
+3. Call `exec` -> `ui-dump`
+4. **WAIT FOR RESULT** -> Parse XML
+5. Call `exec` -> `tap X Y`
+6. Repeat steps 3-5 until the requested task (e.g., Dark Mode) is FULLY COMPLETE.
+ONLY write a message to the user when the final goal is 100% achieved.
 EOF
+
 
 echo "✅ Custom AI brain installed"
 
