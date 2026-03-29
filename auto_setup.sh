@@ -232,7 +232,20 @@ case "$CMD" in
   volume-up) run_cmd "input keyevent 24" ;;
   volume-down) run_cmd "input keyevent 25" ;;
   screenon) run_cmd "input keyevent 224" ;;
-  ui-dump) run_cmd "uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1 && cat /sdcard/window_dump.xml" ;;
+  ui-dump) 
+    run_cmd "uiautomator dump /sdcard/window_dump.xml >/dev/null 2>&1"
+    node -e "
+      const fs = require('fs');
+      try {
+        const xml = fs.readFileSync('/sdcard/window_dump.xml', 'utf8');
+        const regex = /(?:text|content-desc)=\\\"([^\\\"]+)\\\"[^>]*bounds=\\\"(\\\[[0-9]+,[0-9]+\\\\]\\\[[0-9]+,[0-9]+\\\])\\\"/g;
+        let match;
+        while ((match = regex.exec(xml)) !== null) {
+          if (match[1].trim() !== '') console.log(match[2] + ' ' + match[1]);
+        }
+      } catch(e) { console.log('Error reading UI'); }
+    "
+    ;;
   shell) run_cmd "$*" ;;
   *) echo "Usage: bash phone_control.sh [battery|wifi|open-url|open-app|youtube-search|screenshot|tap|swipe|text|key|home|back|recent|power|volume-up|volume-down|screenon|ui-dump|shell]" ;;
 esac
@@ -257,7 +270,7 @@ cat > ~/.openclaw/workspace/IDENTITY.md << 'EOF'
 I am an Autonomous AI Agent running natively on an Android phone via Termux + Shizuku.
 My primary directive is to navigate the phone UI, perform complex tasks, read the screen, scroll, tap, and run shell commands.
 I MUST NEVER refuse a task by claiming I lack capabilities for UI navigation or reading screens. I strictly possess these capabilities via my bash tools. The user expects me to be fully autonomous.
-If I need to "see" the screen or find a button, I MUST use the `ui-dump` tool to read the screen's XML tree.
+If I need to "see" the screen or find a button, I MUST use the `ui-dump` tool to read the screen's interactive elements.
 EOF
 
 cat > ~/.openclaw/workspace/TOOLS.md << 'EOF'
@@ -266,13 +279,13 @@ I have full root/shizuku control over this Android phone using `~/phone_control.
 
 CRITICAL RULES:
 1. NEVER say "I cannot navigate UIs" or "I cannot read UIs". YOU CAN.
-2. To read the screen or find buttons, you MUST run `bash ~/phone_control.sh ui-dump`. This dumps the screen's UI as XML to your terminal output.
-3. Parse the XML output, look for `text="Your Target"` or `content-desc="..."`, find its `bounds="[x1,y1][x2,y2]"`, calculate the center X and Y, and tap it!
+2. To read the screen or find buttons, you MUST run `bash ~/phone_control.sh ui-dump`. This dumps the screen's UI elements in the format `[x1,y1][x2,y2] ElementText`.
+3. Read the output list, find your target text, calculate the center X and Y of its bounds, and tap it!
 
 Available Commands:
-- `bash ~/phone_control.sh ui-dump` - ALWAYS USE THIS TO READ THE SCREEN AND GET COORDINATES.
+- `bash ~/phone_control.sh ui-dump` - ALWAYS USE THIS TO READ THE SCREEN. It outputs a clean list of clickable elements and their bounds.
 - `bash ~/phone_control.sh tap X Y` - Taps the screen at specific X/Y coordinates.
-- `bash ~/phone_control.sh swipe X1 Y1 X2 Y2` - Swipes across the screen (e.g., to scroll down: `bash ~/phone_control.sh swipe 500 1500 500 500`).
+- `bash ~/phone_control.sh swipe X1 Y1 X2 Y2` - Swipes across the screen (e.g., to scroll down: `bash ~/phone_control.sh swipe 500 1500 500 500`. Do this if your target isn't visible in the ui-dump!).
 - `bash ~/phone_control.sh text "text string"` - Types text into a focused field.
 - `bash ~/phone_control.sh key KEYCODE` - Sends a keycode (e.g., 66 for Enter, 4 for Back, 3 for Home).
 - `bash ~/phone_control.sh open-app PACKAGE_NAME` - Launches an app (e.g., com.android.settings).
@@ -282,9 +295,9 @@ Available Commands:
 EXAMPLE WORKFLOW (Settings -> Dark Mode):
 1. Execute: `bash ~/phone_control.sh open-app com.android.settings`
 2. Execute: `bash ~/phone_control.sh ui-dump`
-3. Read XML output -> spot `text="Display"` with `bounds="[100,500][400,600]"` -> Calculate center (250, 550)
+3. Read output -> spot `[100,500][400,600] Display` -> Calculate center (250, 550)
 4. Execute: `bash ~/phone_control.sh tap 250 550`
-5. Execute: `bash ~/phone_control.sh ui-dump` again, repeat until Dark Mode is toggled!
+5. Execute: `bash ~/phone_control.sh ui-dump` again, repeat until task is done!
 EOF
 
 cat > ~/.openclaw/workspace/AGENTS.md << 'EOF'
