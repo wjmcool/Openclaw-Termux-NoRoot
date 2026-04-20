@@ -94,7 +94,8 @@ case "$ARCH" in
 esac
 
 # 创建 Shizuku 启动脚本
-tee "${BIN}/shizuku" > /dev/null << EOF
+# 使用单引号 'EOF' 锁定内部变量，防止 Bash 自作聪明提前解析导致语法崩溃
+tee "${BIN}/shizuku" > /dev/null << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 获取开放端口列表
@@ -113,8 +114,9 @@ for port in \${ports}; do
     echo "\${result}"
 
     # 启动 Shizuku
-    adb shell "\$( adb shell pm path moe.shizuku.privileged.api | sed 's/^package://;s/base\\\\.apk/lib\\\\/${LIB_ARCH}\\\\/libshizuku\\\\.so/' )"
-
+    START_CMD=$(adb shell pm path moe.shizuku.privileged.api | sed "s|^package:||;s|base\.apk|lib/${LIB_ARCH}/libshizuku\.so|")
+    adb shell "$START_CMD"
+    
     # 关闭无线调试，因为不再需要它
     adb shell settings put global adb_wifi_enabled 0
 
@@ -132,6 +134,7 @@ EOF
 dex="${HOME}/rish_shizuku.dex"
 
 # 创建 rish (Shizuku shell) 脚本
+# 这里使用无引号的 EOF，为了让 ${dex} 变成真实路径，同时用 \ 保护内部专属变量
 tee "${BIN}/rish" > /dev/null << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -305,14 +308,14 @@ cat > ~/.openclaw/workspace/AGENTS.md << 'EOF'
 我是一个自主运行的代理实体。我必须要在用户请求的最终目标完全达成之前，持续进行链式的工具执行和操作。
 
 关键提示：严禁在单次工具调用后就中途停止！
-某些模型常在启动某应用后立刻回答 "我已经为您打开了应用，请自行进行接下来的操作"。这是绝对禁止的 (YOU MUST NOT DO THIS)。 
+某些模型常在启动某应用后立刻回答 "我已经为您打开了应用，请自行进行接下来的操作"。这是绝对禁止的。 
 你必须循环并连续化调用你的工具：
 1. 运行启动应用命令
 2. **等待返回结果** (在此期间切勿打字回复用户消息！)
 3. 运行 `ui-dump`
 4. **等待返回结果** -> 读取并解析界面结构
 5. 运行 `tap X Y` 进行操作交互
-6. 重复轮询步骤 3-5，直到被提出的任务被【完全达成 (FULLY COMPLETE)】。
+6. 重复轮询步骤 3-5，直到被提出的任务被【完全达成】。
 只有当且仅当这一长远目标彻底实现后，最后才可以撰写自然语言告知用户任务正式结束。
 EOF
 
