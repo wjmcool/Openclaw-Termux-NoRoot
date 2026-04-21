@@ -94,7 +94,7 @@ case "$ARCH" in
 esac
 
 # 创建 Shizuku 启动脚本
-tee "${BIN}/shizuku" > /dev/null << 'EOF'
+tee "${BIN}/shizuku" > /dev/null << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 获取开放端口列表
@@ -113,8 +113,8 @@ for port in \${ports}; do
     echo "\${result}"
 
     # 启动 Shizuku
-    START_CMD=$(adb shell pm path moe.shizuku.privileged.api | sed "s|^package:||;s|base\.apk|lib/${LIB_ARCH}/libshizuku\.so|")
-    adb shell "$START_CMD"
+    START_CMD=\$(adb shell pm path moe.shizuku.privileged.api | sed "s|^package:||;s|base\.apk|lib/${LIB_ARCH}/libshizuku\.so|")
+    adb shell "\$START_CMD"
 
     # 关闭无线调试，因为不再需要它
     adb shell settings put global adb_wifi_enabled 0
@@ -124,10 +124,11 @@ for port in \${ports}; do
 done
 
 # 如果没有找到可用端口，则向用户输出错误信息
-echo "错误: 未找到可用端口！无线调试功能是否已启用？"
+echo "错误：未找到可用端口！无线调试功能是否已启用？ "
 
 exit 1
 EOF
+
 
 # 将 dex 文件位置设置为变量
 dex="${HOME}/rish_shizuku.dex"
