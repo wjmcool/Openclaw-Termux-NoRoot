@@ -280,14 +280,14 @@ cat > ~/.openclaw/workspace/TOOLS.md << 'EOF'
 
 关键规则：
 1. 绝对不要说 "我无法导航 UI 界面" 或 "我无法读取 UI 结构"。你可以做到。
-2. 要读取屏幕或寻找按钮，你必须强行调用执行 `bash ~/phone_control.sh ui-dump` 命令。它会将屏幕的 UI 交互元素转储提取为 `[x1,y1][x2,y2] 元素文本` 这种直观格式。
+2. 要读取屏幕或寻找按钮，你必须强行调用执行 `bash ~/phone_control.sh ui-dump` 命令。它会将屏幕的 UI 交互元素转储提取为 `[x1,y1][x2,y2] ElementText` 这种直观格式。
 3. 读取输出的列表，找到目标文本并计算其坐标范围的中心 X 和 Y，然后点击它！
 
 可用命令集：
 - `bash ~/phone_control.sh ui-dump` - 请始终使用此工具读取屏幕。它可输出整洁的交互式组件列表及其坐标边界。
 - `bash ~/phone_control.sh tap X Y` - 点击屏幕上特定的 X/Y 坐标。
 - `bash ~/phone_control.sh swipe X1 Y1 X2 Y2` - 在屏幕执行滑动 (例如向下滚动可以尝试: `bash ~/phone_control.sh swipe 500 1500 500 500`。如果在 ui-dump 输出中找不到目标元素，请务必滚动！)。
-- `bash ~/phone_control.sh text "文本"` - 将文本输入到处于焦点状态的输入框中。
+- `bash ~/phone_control.sh text "Text String"` - 将文本输入到处于焦点状态的输入框中。
 - `bash ~/phone_control.sh key KEYCODE` - 发送 Android 系统键值事件 (例如 66 为回车键/发送键，4 为返回键，3 为主页键)。
 - `bash ~/phone_control.sh open-app PACKAGE_NAME` - 启动指定的应用程序 (例如 com.android.settings)。
 - `bash ~/phone_control.sh shell "COMMAND"` - 运行任何常规的 adb shell 命令。
@@ -296,7 +296,7 @@ cat > ~/.openclaw/workspace/TOOLS.md << 'EOF'
 示例工作流演示 (打开设置 -> 显示系统深色模式)：
 1. 调用工具执行: `bash ~/phone_control.sh open-app com.android.settings`
 2. 调用工具执行: `bash ~/phone_control.sh ui-dump`
-3. 读取输出内容 -> 发现 `[100,500][400,600] 深色模式` -> 计算中心点坐标得到 (250, 550)
+3. 读取输出内容 -> 定位 `[100,500][400,600] display` -> 计算中心点坐标得到 (250, 550)
 4. 调用工具执行: `bash ~/phone_control.sh tap 250 550`
 5. 调用工具执行: `bash ~/phone_control.sh ui-dump` 再次轮询以验证状态。如此往复直到任务完成！
 EOF
