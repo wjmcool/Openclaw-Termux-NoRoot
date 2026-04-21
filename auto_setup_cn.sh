@@ -94,8 +94,7 @@ case "$ARCH" in
 esac
 
 # 创建 Shizuku 启动脚本
-# 使用单引号 'EOF' 锁定内部变量，防止 Bash 自作聪明提前解析导致语法崩溃
-tee "${BIN}/shizuku" > /dev/null << 'EOF'
+tee "${BIN}/shizuku" > /dev/null << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 获取开放端口列表
@@ -114,9 +113,8 @@ for port in \${ports}; do
     echo "\${result}"
 
     # 启动 Shizuku
-    START_CMD=$(adb shell pm path moe.shizuku.privileged.api | sed "s|^package:||;s|base\.apk|lib/${LIB_ARCH}/libshizuku\.so|")
-    adb shell "$START_CMD"
-    
+    adb shell "\$( adb shell pm path moe.shizuku.privileged.api | sed 's/^package://;s/base\\\\.apk/lib\\\\/${LIB_ARCH}\\\\/libshizuku\\\\.so/' )"
+
     # 关闭无线调试，因为不再需要它
     adb shell settings put global adb_wifi_enabled 0
 
@@ -134,7 +132,6 @@ EOF
 dex="${HOME}/rish_shizuku.dex"
 
 # 创建 rish (Shizuku shell) 脚本
-# 这里使用无引号的 EOF，为了让 ${dex} 变成真实路径，同时用 \ 保护内部专属变量
 tee "${BIN}/rish" > /dev/null << EOF
 #!/data/data/com.termux/files/usr/bin/bash
 
@@ -197,7 +194,7 @@ if command -v openclaw &>/dev/null || [ -d "$HOME/.openclaw/repo" ]; then
     echo "✅ 步骤 4/5: OpenClaw 已经安装！跳过安装步骤。"
 else
     echo "📦 步骤 4/5: 正在安装 OpenClaw。这需要几分钟的时间..."
-    bash -c "\$(curl -sSL https://myopenclawhub.com/install)" < /dev/tty && source ~/.bashrc 2>/dev/null
+    bash -c "$(curl -sSL https://myopenclawhub.com/install)" < /dev/tty && source ~/.bashrc 2>/dev/null
 fi
 
 # =========================================================================
@@ -209,25 +206,25 @@ echo "🧠 步骤 5/5: 正在配置 AI 手机控制器..."
 # 创建 phone_control.sh
 cat > ~/phone_control.sh << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
-CMD="\$1"
+CMD="$1"
 shift
 run_cmd() {
-  if command -v rish &>/dev/null; then rish -c "\$@"
-  elif command -v adb &>/dev/null && adb get-state 1>/dev/null 2>&1; then adb shell "\$@"
-  elif command -v su &>/dev/null; then su -c "\$@"
+  if command -v rish &>/dev/null; then rish -c "$@"
+  elif command -v adb &>/dev/null && adb get-state 1>/dev/null 2>&1; then adb shell "$@"
+  elif command -v su &>/dev/null; then su -c "$@"
   else echo "❌ 错误: 请先启动 Shizuku"; exit 1; fi
 }
-case "\$CMD" in
-  screenshot) run_cmd "screencap -p '\${1:-/sdcard/screenshot.png}'" ;;
-  open-app) run_cmd "monkey -p \$1 -c android.intent.category.LAUNCHER 1" 2>/dev/null ;;
-  youtube-search) QUERY=\$(echo "\$*" | sed 's/ /+/g'); run_cmd "am start -a android.intent.action.VIEW -d 'https://www.youtube.com/results?search_query=\$QUERY' com.google.android.youtube" ;;
-  open-url) run_cmd "am start -a android.intent.action.VIEW -d '\$1'" ;;
-  wifi) if [ "\$1" = "on" ]; then run_cmd "svc wifi enable"; else run_cmd "svc wifi disable"; fi ;;
+case "$CMD" in
+  screenshot) run_cmd "screencap -p '${1:-/sdcard/screenshot.png}'" ;;
+  open-app) run_cmd "monkey -p $1 -c android.intent.category.LAUNCHER 1" 2>/dev/null ;;
+  youtube-search) QUERY=$(echo "$*" | sed 's/ /+/g'); run_cmd "am start -a android.intent.action.VIEW -d 'https://www.youtube.com/results?search_query=$QUERY' com.google.android.youtube" ;;
+  open-url) run_cmd "am start -a android.intent.action.VIEW -d '$1'" ;;
+  wifi) if [ "$1" = "on" ]; then run_cmd "svc wifi enable"; else run_cmd "svc wifi disable"; fi ;;
   battery) run_cmd "dumpsys battery" | grep "level" ;;
-  tap) run_cmd "input tap \$1 \$2" ;;
-  swipe) run_cmd "input swipe \$1 \$2 \$3 \$4 \${5:-500}" ;;
-  text) run_cmd "input text '\$*'" ;;
-  key) run_cmd "input keyevent \$1" ;;
+  tap) run_cmd "input tap $1 $2" ;;
+  swipe) run_cmd "input swipe $1 $2 $3 $4 ${5:-500}" ;;
+  text) run_cmd "input text '$*'" ;;
+  key) run_cmd "input keyevent $1" ;;
   home) run_cmd "input keyevent 3" ;;
   back) run_cmd "input keyevent 4" ;;
   recent) run_cmd "input keyevent 187" ;;
@@ -249,7 +246,7 @@ case "\$CMD" in
       } catch(e) { console.log('读取 UI 布局时发生错误'); }
     "
     ;;
-  shell) run_cmd "\$*" ;;
+  shell) run_cmd "$*" ;;
   *) echo "用法: bash phone_control.sh [battery|wifi|open-url|open-app|youtube-search|screenshot|tap|swipe|text|key|home|back|recent|power|volume-up|volume-down|screenon|ui-dump|shell]" ;;
 esac
 EOF
@@ -308,18 +305,18 @@ cat > ~/.openclaw/workspace/AGENTS.md << 'EOF'
 我是一个自主运行的代理实体。我必须要在用户请求的最终目标完全达成之前，持续进行链式的工具执行和操作。
 
 关键提示：严禁在单次工具调用后就中途停止！
-某些模型常在启动某应用后立刻回答 "我已经为您打开了应用，请自行进行接下来的操作"。这是绝对禁止的。 
+某些模型常在启动某应用后立刻回答 "我已经为您打开了应用，请自行进行接下来的操作"。这是绝对禁止的 (YOU MUST NOT DO THIS)。 
 你必须循环并连续化调用你的工具：
 1. 运行启动应用命令
 2. **等待返回结果** (在此期间切勿打字回复用户消息！)
 3. 运行 `ui-dump`
 4. **等待返回结果** -> 读取并解析界面结构
 5. 运行 `tap X Y` 进行操作交互
-6. 重复轮询步骤 3-5，直到被提出的任务被【完全达成】。
+6. 重复轮询步骤 3-5，直到被提出的任务被【完全达成 (FULLY COMPLETE)】。
 只有当且仅当这一长远目标彻底实现后，最后才可以撰写自然语言告知用户任务正式结束。
 EOF
 
-echo "✅ 定制化 AI 脑部设定装填完毕"
+echo "✅ 定制化 AI Agent设定装填完毕"
 
 # =========================================================================
 # 🎉 完成!
