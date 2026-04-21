@@ -296,7 +296,7 @@ cat > ~/.openclaw/workspace/TOOLS.md << 'EOF'
 示例工作流演示 (打开设置 -> 显示系统深色模式)：
 1. 调用工具执行: `bash ~/phone_control.sh open-app com.android.settings`
 2. 调用工具执行: `bash ~/phone_control.sh ui-dump`
-3. 读取输出内容 -> 定位 `[100,500][400,600] display` -> 计算中心点坐标得到 (250, 550)
+3. 读取输出内容 -> 定位 `[100,500][400,600] Display` -> 计算中心点坐标得到 (250, 550)
 4. 调用工具执行: `bash ~/phone_control.sh tap 250 550`
 5. 调用工具执行: `bash ~/phone_control.sh ui-dump` 再次轮询以验证状态。如此往复直到任务完成！
 EOF
