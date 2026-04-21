@@ -94,7 +94,7 @@ case "$ARCH" in
 esac
 
 # 创建 Shizuku 启动脚本
-tee "${BIN}/shizuku" > /dev/null << EOF
+tee "${BIN}/shizuku" > /dev/null << 'EOF'
 #!/data/data/com.termux/files/usr/bin/bash
 
 # 获取开放端口列表
@@ -113,7 +113,8 @@ for port in \${ports}; do
     echo "\${result}"
 
     # 启动 Shizuku
-    adb shell "\$( adb shell pm path moe.shizuku.privileged.api | sed 's/^package://;s/base\\\\.apk/lib\\\\/${LIB_ARCH}\\\\/libshizuku\\\\.so/' )"
+    START_CMD=$(adb shell pm path moe.shizuku.privileged.api | sed "s|^package:||;s|base\.apk|lib/${LIB_ARCH}/libshizuku\.so|")
+    adb shell "$START_CMD"
 
     # 关闭无线调试，因为不再需要它
     adb shell settings put global adb_wifi_enabled 0
